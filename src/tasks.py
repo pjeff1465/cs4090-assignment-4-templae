@@ -2,6 +2,9 @@ import json
 import os
 from datetime import datetime
 
+import streamlit as st
+
+
 # File path for task storage
 DEFAULT_TASKS_FILE = "tasks.json"
 
@@ -46,9 +49,15 @@ def generate_unique_id(tasks):
     Returns:
         int: A unique ID for a new task
     """
-    if not tasks:
-        return 1
-    return max(task["id"] for task in tasks) + 1
+    # save all tasks with id
+    tasks_with_id = [task for task in tasks if isinstance(task.get("id"), int)]
+    
+    # assign no id task as 1
+    if not tasks_with_id:
+        return 1  
+    
+    # update all following tasks to make ids sequential
+    return max(task["id"] for task in tasks_with_id) + 1 
 
 def filter_tasks_by_priority(tasks, priority):
     """
@@ -100,11 +109,11 @@ def search_tasks(tasks, query):
     Returns:
         list: Filtered list of tasks matching the search query
     """
-    query = query.lower()
+    query_str = str(query).lower()
     return [
         task for task in tasks 
-        if query in task.get("title", "").lower() or 
-           query in task.get("description", "").lower()
+        if query_str in str(task.get("title", "")).lower() or 
+           query_str in str(task.get("description", "")).lower()
     ]
 
 def get_overdue_tasks(tasks):
@@ -117,9 +126,100 @@ def get_overdue_tasks(tasks):
     Returns:
         list: List of overdue tasks
     """
-    today = datetime.now().strftime("%Y-%m-%d")
-    return [
-        task for task in tasks 
-        if not task.get("completed", False) and 
-           task.get("due_date", "") < today
-    ]
+    today = datetime.now().date() # get todays date to compare later
+    overdue = []
+
+    for task in tasks:
+        if task.get("completed", False): # first check is not completed
+            continue
+        due_date_str = task.get("due_date", "") # strip due date from task as string
+        
+        if not due_date_str: # continue if no date
+            print(f"Task has no due date, skipping task: {task}")
+            continue
+
+        try: 
+            due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date() # check YYYY-MM-DD format
+        except ValueError:
+            try:
+                due_date = datetime.strptime(due_date_str, "%m/%d/%Y").date() # check MM/DD/YYYY format
+            except ValueError:
+                try:
+                    due_date = datetime.strptime(due_date_str, "%b %d, %Y").date() # check Month Day, Year format
+                except ValueError:
+                    continue
+        
+        if due_date < today: # if task overdue add to list
+            overdue.append(task)
+
+    return overdue 
+
+def mark_task_complete(tasks, task_id):
+    '''
+    Mark task as complete by its ID
+
+    Args:
+        tasks (list): List of task stored as dictionary
+        task_id (int): ID of the task to mark complete
+
+    Returns:
+        list: Updated list with given tasks marked as complete    
+
+    '''
+
+    found = False
+    for task in tasks:
+        if task.get("id") == task_id:
+            task["completed"] = True
+            found = True
+            break
+
+    if not found:
+        st.warning(f"Task with ID {task_id} not found.")
+
+    return tasks
+
+
+def delete_task(tasks, task_id):
+   '''
+   delete a task by task ID
+
+   Args:
+       tasks (list): List of tasks stored as dictionary
+       task_id (int): ID of the task to mark complete
+
+   Returns:
+       list: Updated list with given tasks deleted
+   '''
+
+   updated_tasks = [task for task in tasks if task.get("id") != task_id]
+
+   for i, task in enumerate(updated_tasks, start=1):
+       task["id"] = i
+
+   return updated_tasks
+
+def mark_task_incomplete(tasks, task_id):
+    '''
+    Mark task as incomplete by its ID
+
+    Args:
+        tasks (list): List of task stored as dictionary
+        task_id (int): ID of the task to mark incomplete
+
+    Returns:
+        list: Updated list with given tasks marked as incomplete    
+
+    '''
+
+    found = False
+    for task in tasks:
+        if task.get("id") == task_id:
+            task["completed"] = False
+            found = True
+            break
+
+    if not found:
+        st.warning(f"Task with ID {task_id} not found.")
+
+    return tasks

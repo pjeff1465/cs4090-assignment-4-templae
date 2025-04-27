@@ -1,0 +1,4 @@
+# file: /Users/admin/Desktop/CS4090/assignment 4/cs4090-assignment-4-templae/src/tasks.py
+# hypothesis_version: 6.131.9
+
+['%Y-%m-%d', '%b %d, %Y', '%m/%d/%Y', 'category', 'completed', 'description', 'due_date', 'id', 'incomplete', 'priority', 'r', 'tasks.json', 'title', 'w']
